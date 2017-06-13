@@ -1,0 +1,82 @@
+---
+title: "Análise de viagens de bicicleta na ciclovia da Av. Faria Lima, São Paulo"
+author: "Vitor Aguiar"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r pkgs}
+library(dplyr)
+library(tidyr)
+library(readr)
+library(purrr)
+library(ggplot2)
+```
+
+```{r data}
+allfiles <- list.files("../DadosDaCiclovia", recursive = TRUE, 
+                       pattern = "\\d{4}-\\d{2}-\\d{2}\\.csv$", 
+                       full.names = TRUE)
+
+ciclo_df <- 
+  map_df(allfiles, ~read_csv(., col_types = "---T-----")) %>%
+  separate(EVENT_TIME, c("date", "time"), sep = " ") %>%
+  mutate(date = as.Date(date),
+         weekday = weekdays(date))
+
+day_counts <- 
+  count(ciclo_df, date, weekday) %>%
+  mutate(day_class = ifelse(weekday %in% c("Saturday", "Sunday"), weekday, "weekday"))
+  
+hour_averages <-
+  ciclo_df %>%
+  separate(time, c("h", "m", "s"), sep = ":", convert = TRUE) %>%
+  mutate(is_weekend = ifelse(weekday %in% c("Saturday", "Sunday"), 1, 0)) %>%
+  count(date, h, is_weekend) %>%
+  group_by(h, is_weekend) %>%
+  summarise(average = mean(n))
+```
+
+```{r plot_timeseries, fig.width=8, fig.height=5}
+ggplot(day_counts, aes(date, n)) +
+  geom_smooth(method = "loess", span = .3, se = FALSE, size = 5, 
+              color = "grey75") +
+  geom_line(color = "grey50", size = .5) +
+  geom_point(aes(color = day_class), size = 2, alpha = .8) +
+  scale_color_manual(name = NULL,
+                     values = c("weekday" = "grey30",
+                                "Saturday" = "red",
+                                "Sunday" = "royalblue"),
+                     labels = c("weekday" = "dia de semana", 
+                                "Saturday" = "sábado",
+                                "Sunday" = "domingo")) +
+  theme_bw() +
+  theme(legend.position = c(.1, .85),
+        legend.margin = margin(6, 6, 6, 6)) +
+  labs(x = " ", y = NULL,
+       title = "Número de viagens de bicicleta por dia na ciclovia da Av. Faria Lima",
+       caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia")
+
+#ggsave("./plot_ciclovia.png", device = "png", height = 5, width = 8, units = "in", dpi = 200)
+```
+
+```{r plot_averages_per_hour, fig.width=8, fig.height=5}
+ggplot(hour_averages, aes(h, average, fill = factor(is_weekend))) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous(breaks = 0:23) +
+  scale_fill_manual(name = "", 
+                    values = c("0" = "grey30", "1" = "darkseagreen"),
+                    labels = c("0" = "dia de semana", "1" = "fim de semana")) +
+  theme_bw() +
+  theme(legend.position = c(.1, .87),
+        legend.margin = margin(6, 6, 6, 6)) +
+  labs(x = "hora", y = "média") +
+  labs(title = "Média de viagens de bicicleta por hora do dia na ciclovia da Av. Faria Lima",
+       subtitle = "(Junho 2015 - Junho 2017)",
+       caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia")
+
+#ggsave("./plot_ciclovia_mediaHora.png", device = "png", height = 5, width = 8, units = "in", dpi = 300)
+```
