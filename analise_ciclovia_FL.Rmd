@@ -34,49 +34,53 @@ day_counts <-
 hour_averages <-
   ciclo_df %>%
   separate(time, c("h", "m", "s"), sep = ":", convert = TRUE) %>%
-  mutate(is_weekend = ifelse(weekday %in% c("Saturday", "Sunday"), 1, 0)) %>%
-  count(date, h, is_weekend) %>%
-  group_by(h, is_weekend) %>%
+  mutate(day_class = ifelse(weekday %in% c("Saturday", "Sunday"), weekday, "weekday")) %>%
+  count(date, h, day_class) %>%
+  group_by(h, day_class) %>%
   summarise(average = mean(n))
 ```
 
 ```{r plot_timeseries, fig.width=8, fig.height=5}
 ggplot(day_counts, aes(date, n)) +
-  geom_smooth(method = "loess", span = .3, se = FALSE, size = 5, 
-              color = "grey75") +
-  geom_line(color = "grey50", size = .5) +
-  geom_point(aes(color = day_class), size = 2, alpha = .8) +
+  geom_line(size = .6, alpha = .5) +
+  geom_point(aes(color = day_class), size = 1.6, alpha = .8) +
+  geom_smooth(method = "loess", span = .4, se = FALSE, size = 2, color = "grey20") +
   scale_color_manual(name = NULL,
-                     values = c("weekday" = "grey30",
-                                "Saturday" = "red",
+                     values = c("weekday" = "grey35",
+                                "Saturday" = "orangered3",
                                 "Sunday" = "royalblue"),
                      labels = c("weekday" = "dia de semana", 
                                 "Saturday" = "sábado",
                                 "Sunday" = "domingo")) +
-  theme_bw() +
   theme(legend.position = c(.1, .85),
         legend.margin = margin(6, 6, 6, 6)) +
   labs(x = " ", y = NULL,
        title = "Número de viagens de bicicleta por dia na ciclovia da Av. Faria Lima",
        caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia")
 
-#ggsave("./plot_ciclovia.png", device = "png", height = 5, width = 8, units = "in", dpi = 200)
+#ggsave("../DadosDaCiclovia/plot_ciclovia.png", device = "png", height = 5, 
+#       width = 8, units = "in", dpi = 200)
 ```
 
 ```{r plot_averages_per_hour, fig.width=8, fig.height=5}
-ggplot(hour_averages, aes(h, average, fill = factor(is_weekend))) +
-  geom_bar(stat = "identity") +
+ggplot(hour_averages, aes(h, average, color = factor(day_class))) +
+  geom_point(alpha = .92, size = 3) +
+  geom_line(alpha = .8, size = 2) +
   scale_x_continuous(breaks = 0:23) +
-  scale_fill_manual(name = "", 
-                    values = c("0" = "grey30", "1" = "darkseagreen"),
-                    labels = c("0" = "dia de semana", "1" = "fim de semana")) +
-  theme_bw() +
+  scale_color_manual(name = NULL,
+                     values = c("weekday" = "grey35",
+                                "Saturday" = "orangered3",
+                                "Sunday" = "royalblue"),
+                     labels = c("weekday" = "dia de semana", 
+                                "Saturday" = "sábado",
+                                "Sunday" = "domingo")) +
   theme(legend.position = c(.1, .87),
         legend.margin = margin(6, 6, 6, 6)) +
-  labs(x = "hora", y = "média") +
   labs(title = "Média de viagens de bicicleta por hora do dia na ciclovia da Av. Faria Lima",
        subtitle = "(Junho 2015 - Junho 2017)",
-       caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia")
+       caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia",
+       x = "hora", y = "média")
 
-#ggsave("./plot_ciclovia_mediaHora.png", device = "png", height = 5, width = 8, units = "in", dpi = 300)
+#ggsave("../DadosDaCiclovia/plot_ciclovia_mediaHora.png", device = "png", height = 5, 
+#       width = 8, units = "in", dpi = 300)
 ```
