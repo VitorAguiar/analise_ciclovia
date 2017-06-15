@@ -31,13 +31,11 @@ day_counts <-
   count(ciclo_df, date, weekday) %>%
   mutate(day_class = ifelse(weekday %in% c("Saturday", "Sunday"), weekday, "weekday"))
   
-hour_averages <-
+hour_counts <-
   ciclo_df %>%
   separate(time, c("h", "m", "s"), sep = ":", convert = TRUE) %>%
   mutate(day_class = ifelse(weekday %in% c("Saturday", "Sunday"), weekday, "weekday")) %>%
-  count(date, h, day_class) %>%
-  group_by(h, day_class) %>%
-  summarise(average = mean(n))
+  count(date, h, day_class)
 ```
 
 ```{r plot_timeseries, fig.width=8, fig.height=5}
@@ -52,6 +50,7 @@ ggplot(day_counts, aes(date, n)) +
                      labels = c("weekday" = "dia de semana", 
                                 "Saturday" = "sábado",
                                 "Sunday" = "domingo")) +
+  theme_bw() +
   theme(legend.position = c(.1, .85),
         legend.margin = margin(6, 6, 6, 6)) +
   labs(x = " ", y = NULL,
@@ -59,13 +58,17 @@ ggplot(day_counts, aes(date, n)) +
        caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia")
 
 #ggsave("../DadosDaCiclovia/plot_ciclovia.png", device = "png", height = 5, 
-#       width = 8, units = "in", dpi = 200)
+#       width = 8, units = "in", dpi = 300)
 ```
 
 ```{r plot_averages_per_hour, fig.width=8, fig.height=5}
-ggplot(hour_averages, aes(h, average, color = factor(day_class))) +
-  geom_point(alpha = .92, size = 3) +
-  geom_line(alpha = .8, size = 2) +
+ggplot(hour_counts, aes(h, n, fill = day_class)) +
+  stat_summary(fun.y = mean, geom = "bar", alpha = .3) +
+  geom_smooth(aes(color = day_class), se = FALSE,
+                method = "glm",
+                formula = y ~ splines::ns(x, 9),
+                method.args = list(family = gaussian(link = "log")),
+                lwd = 1.5) +
   scale_x_continuous(breaks = 0:23) +
   scale_color_manual(name = NULL,
                      values = c("weekday" = "grey35",
@@ -74,8 +77,18 @@ ggplot(hour_averages, aes(h, average, color = factor(day_class))) +
                      labels = c("weekday" = "dia de semana", 
                                 "Saturday" = "sábado",
                                 "Sunday" = "domingo")) +
+    scale_fill_manual(name = NULL,
+                     values = c("weekday" = "grey35",
+                                "Saturday" = "orangered3",
+                                "Sunday" = "royalblue"),
+                     labels = c("weekday" = "dia de semana", 
+                                "Saturday" = "sábado",
+                                "Sunday" = "domingo")) +
+  theme_bw() +
   theme(legend.position = c(.1, .87),
-        legend.margin = margin(6, 6, 6, 6)) +
+        legend.margin = margin(6, 6, 6, 6),
+        panel.grid.major = element_line(color = "grey95"),
+        panel.grid.minor = element_blank()) +
   labs(title = "Média de viagens de bicicleta por hora do dia na ciclovia da Av. Faria Lima",
        subtitle = "(Junho 2015 - Junho 2017)",
        caption = "Dados: https://github.com/LabProdam/DadosDaCiclovia",
